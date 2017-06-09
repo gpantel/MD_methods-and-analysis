@@ -5,6 +5,9 @@
 #
 # The selection of lipids can be modified by changing the relevant atom selections and groups within
 # the "compute_p2s" method and the "analyze_clusters" method
+#
+# Current usage is: python compute_n_m_DPPC+DIPC+CHOL.py
+# where <side> is "up" or "down", analyzing either the upper or lower leaflet of a MARTINI DPPC:DIPC:CHOL# membrane using induces of the membrane as if the system was built using the insane.py tool
 #########################################################################################################
 
 # import libraries
