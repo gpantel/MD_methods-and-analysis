@@ -36,8 +36,8 @@ import multiprocessing as mp
 
 print 'Initiating Voroni Tesselation'
 
-top = '../confout.gro'
-traj = '../run.xtc'
+top = 'min5.gro'
+traj = 'run.xtc'
 side = sys.argv[1] # "up" for upper leaflet "down" for lower leaflet
 
 u = MDAnalysis.Universe(top,traj)
@@ -55,14 +55,13 @@ sel3 = 'resname %s and name ROH'%lipid3
 # Identify number of residues in each lipid and extract only he top residues (for now)
 
 #Frames to be calculated
-#end_f   = 11001 #8001
 end_f = u.trajectory.n_frames
 print end_f
 start_f = 0
-skip    = 10
+skip    = 1000
 
 # Number of processors to use in multiprocessing
-nprocs = 16
+nprocs = 1
 
 frames = np.arange(start_f, end_f)[::skip]
 n_frames = len(frames)
@@ -87,31 +86,59 @@ def voronoi_tessel(ts):
     # set the time step
     print 'Frame %i in %i'%(ts, end_f)
     u = MDAnalysis.Universe(top,traj)
-    u.trajectory[ts-1] # What the hell is MDAnalysis doing...? This changes the frame to frame "ts"
+    u.trajectory[0]
 
-# Select atoms within this particular frame
+    # Select atoms within this particular frame
     lpd1_atoms = u.select_atoms(sel1)
     lpd2_atoms = u.select_atoms(sel2)
     lpd3_atoms = u.select_atoms(sel3)
-    
+
+    zmean = np.mean(np.concatenate([lpd1_atoms.positions[:,2], lpd2_atoms.positions[:,2], lpd3_atoms.positions[:,2]]))
+
     num_lpd1 = lpd1_atoms.n_atoms
     num_lpd2 = lpd2_atoms.n_atoms
 
-    # atoms in the upper leaflet as defined by insane.py or the CHARMM-GUI membrane builders
-    # select cholesterol headgroups within 1.5 nm of lipid headgroups in the selected leaflet
+    # select atoms in the upper leaflet using positions in the first frame  of simulation
+    # select cholesterol headgroups within 1.5 nm of lipid headgroups in the selected leaflet in the current frame
     if side == 'up':
-        lpd1i = lpd1_atoms[:((num_lpd1)/2)]
-        lpd2i = lpd2_atoms[:((num_lpd2)/2)]
+        lpd1i=[]
+        zpos = lpd1_atoms.positions[:,2]
+        for i in range(num_lpd1):
+            if zpos[i] > zmean:
+                lpd1i.append(lpd1_atoms[i])
+        lpd1i = np.sum(np.array(lpd1i))
+
+        lpd2i=[]
+        zpos = lpd2_atoms.positions[:,2]
+        for i in range(num_lpd2):
+            if zpos[i] > zmean:
+                lpd2i.append(lpd2_atoms[i])
+        lpd2i = np.sum(np.array(lpd2i))
 
         lipids = lpd1i + lpd2i
+        u.trajectory[ts] # now move to the frame currently being analyzed
         ns_lipids = NS.AtomNeighborSearch(lpd3_atoms)
 
         lpd3i = ns_lipids.search(lipids,15.0)
     elif side == 'down':
-        lpd1i = lpd1_atoms[((num_lpd1)/2):]
-        lpd2i = lpd2_atoms[((num_lpd2)/2):]
+        lpd1i=[]
+        zpos = lpd1_atoms.positions[:,2]
+        for i in range(num_lpd1):
+            if zpos[i] < zmean:
+                lpd1i.append(lpd1_atoms[i])
+        lpd1i = np.sum(np.array(lpd1i))
+
+        lpd2i=[]
+        zpos = lpd2_atoms.positions[:,2]
+        for i in range(num_lpd2):
+            if zpos[i] < zmean:
+                lpd2i.append(lpd2_atoms[i])
+        lpd2i = np.sum(np.array(lpd2i))
+
 
         lipids = lpd1i + lpd2i
+
+        u.trajectory[ts] # now move to the frame currently being analyzed
         ns_lipids = NS.AtomNeighborSearch(lpd3_atoms)
 
         lpd3i = ns_lipids.search(lipids,15.0)
@@ -119,7 +146,7 @@ def voronoi_tessel(ts):
 
 
 #Extracting the coordinates
-    Pxyz = lpd_atms.coordinates()
+    Pxyz = lpd_atms.positions
     Pxy = []
     for l in range(0,len(Pxyz)) :
         Pxy.append([Pxyz[l][0],Pxyz[l][1]])
@@ -272,33 +299,6 @@ def voronoi_tessel(ts):
     sum_bonds = Lpd1_Lpd1 + Lpd1_Lpd2 + Lpd2_Lpd2
     avg_bonds = float(sum_bonds)/float(len(atm_list))
 
-#Plotting Voroni Diagrams
-
-#   plt.figure()
-#   vor_rgns = vor.regions
-#   l_vor_rgns = len(vor_rgns)
-
-#   vor_points = vor.point_region
-#   l_vor_points = len(vor_points)
-    
-#   plt.clf()
-#   voronoi_plot_2d(vor_s)
-
-#   for p in range(0, l_vor_points):
-#       rgn = vor_rgns[vor_points[p]]
-#       L = atm_list_p[p]
-#       if not -1 in rgn and 0 <= L[0] < x_box and 0 <= L[1] < y_box :
-# #           print p , rgn
-#           if L[2] == lipid1:
-#              polygon = [vor.vertices[i] for i in rgn]
-#              plt.fill(*zip(*polygon), color='blue')
-#           if L[2] == lipid2:
-#              polygon = [vor.vertices[i] for i in rgn]
-#              plt.fill(*zip(*polygon), color='red')
-#           if L[2] == lipid3:
-#               polygon = [vor.vertices[i] for i in rgn]
-#               plt.fill(*zip(*polygon), color='grey')
-#   plt.savefig('img' + str('%03d' %vrn_frm) + '.png')
     return Lpd1_Lpd1, Lpd2_Lpd2, Lpd3_Lpd3, Lpd1_Lpd2, Lpd1_Lpd3, Lpd2_Lpd3, sum_bonds, avg_bonds, mix_entropy
 
 pool = mp.Pool(processes=nprocs)
