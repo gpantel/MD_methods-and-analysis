@@ -1,0 +1,30 @@
+{
+"pdb_prefix": "ex1",
+"dcd_prefix": "ex1",
+"nc_prefix": "ex1",
+"data_name": "ex1.dat",
+
+"initial_condition": "mixed",
+"N": 2000,
+"T_r": 1,
+"density_r": 0.75,
+"dimensions": 2,
+"particle_ratios": [1, 1],
+"sigmas_r": [1, 1],
+"masses_r": [1, 1],
+"epsilonAR_r": [
+        [4, 0.4],
+        [0.4, 4]
+        ],
+
+"numsteps":        500000000,
+"data_interval":       10000,
+"coordinate_interval": 10000,
+"frcvel_interval":     10000,
+"platform_type": "CUDA",
+
+"minimization": false,
+"restraint_widthscale": 1.0,
+"forcewall": 10.0,
+"enable_restraint": false
+}

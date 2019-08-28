@@ -1,0 +1,32 @@
+{
+"pdb_prefix": "ex2",
+"dcd_prefix": "ex2",
+"nc_prefix": "ex2",
+"data_name": "ex2.dat",
+
+"initial_condition": "stripe",
+"N": 1000,
+"T_r": 2,
+"density_r": 0.8,
+"dimensions": 3,
+"particle_ratios": [4, 4, 2],
+"sigmas_r": [1, 1, 1],
+"masses_r": [1, 1, 1],
+"epsilonAR_r": [
+        [1, 1, 1],
+        [1, 1, 1],
+	[1, 1, 1]
+        ],
+
+"numsteps":    200000,
+"data_interval":  100,
+"coordinate_interval": 100,
+"frcvel_interval": 100,
+"platform_type": "CUDA",
+"minimization": true,
+
+
+"restraint_widthscale": 1.0,
+"forcewall": 10.0,
+"enable_restraint": false
+}
