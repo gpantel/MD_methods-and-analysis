@@ -3,6 +3,7 @@
 "dcd_prefix": "ex1",
 "nc_prefix": "ex1",
 "data_name": "ex1.dat",
+"rstout_prefix": "ex1.rst"
 
 "initial_condition": "mixed",
 "N": 2000,

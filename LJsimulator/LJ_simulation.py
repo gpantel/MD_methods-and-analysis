@@ -51,6 +51,12 @@ platform_type = configdic['platform_type']
 minimization = configdic['minimization'] # Set this to "True" if you want to perform minimization
 initial_condition = configdic['initial_condition'] # mixed or stripe
 
+### Optional parameters -- restart files
+if 'rstin_prefix' in configdic.keys():
+    rstin_prefix = configdic['rstin_prefix']
+if 'rstout_prefix' in configdic.keys():
+    rstout_prefix = configdic['rstout_prefix']
+
 #################### Everything insensitive to user input used to set up simulations should be below here
 #os.system('export OPENMM_CPU_THREADS=%i'%numthreads)
 M = len(particle_ratios) # number of particle types in the system
@@ -274,6 +280,11 @@ else:
 simulation.context.setPositions(positions)
 simulation.context.setVelocitiesToTemperature(T)
 
+# load restart if you want
+if 'rstin_prefix' in configdic.keys():
+    with open(rstin_prefix+'.rst', 'r') as f:
+        simulation.context.setState(XmlSerializer.deserialize(f.read()))
+
 ############ Running OpenMM simulation
 if minimization == True:
     print('Performing SD minimization')
@@ -292,3 +303,9 @@ simulation.reporters.append(ReducedStateDataReporter(data_name, data_interval, d
     potentialEnergy=True, kineticEnergy=True, temperature=True, progress=True, remainingTime=True, 
     speed=True, totalSteps=numsteps, separator='\t'))
 simulation.step(numsteps)
+
+# write restart files
+if 'rstout_prefix' in configdic.keys():
+    state = simulation.context.getState( getPositions=True, getVelocities=True )
+    with open(rstout_prefix+'.rst', 'w') as f:
+        f.write(mm.XmlSerializer.serialize(state))
