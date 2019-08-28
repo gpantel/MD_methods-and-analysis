@@ -17,7 +17,7 @@
         [0.4, 4]
         ],
 
-"numsteps":        500000000,
+"numsteps":         50000000,
 "data_interval":       10000,
 "coordinate_interval": 10000,
 "frcvel_interval":     10000,
