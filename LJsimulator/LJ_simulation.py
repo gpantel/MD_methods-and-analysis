@@ -12,7 +12,7 @@ from sys import platform
 # This JSON file loads up the user input parameters
 configdic = json.load(open(sys.argv[1]))
 # need to know the path to packmol
-path_to_packmol = '/home/gpantel/packmol-18.169/packmol'
+path_to_packmol = '/Users/gpantel/packmol-18.169/packmol'
 
 #################### This section is for user input. Users do not need to touch anything outside of this section
 ### Parameters that set file names
@@ -94,8 +94,8 @@ gamma_r = 1000.0*0.5*timestep_r/u.picoseconds # timestep needs to be scaled up b
 if 'T_r' in configdic.keys() and 'kbT_chi' not in configdic.keys():
     T = np.true_divide(epsilons_r_avg*T_r, 0.008314462175)*u.kelvin # the temperature needed to achieve the reduced temperature T_r
 elif 'kbT_chi' in configdic.keys() and 'T_r' not in configdic.keys():
-    chi = -((epsilonAR_r[1][0] + epsilonAR_r[0][1])/2.) - ((epsilonAR_r[0][0] + epsilonAR_r[1][1])/2.) 
-    T_r = kbT_chi*np.true_divide(chi,kB)
+    chi = (-(epsilonAR_r[1][0] + epsilonAR_r[0][1])/2.) - (-(epsilonAR_r[0][0] + epsilonAR_r[1][1])/2.) 
+    T_r = (kbT_chi*np.true_divide(chi,kB)).value_in_unit(u.kelvin*u.mole/u.joule)
 
 T = np.true_divide(epsilons_r_avg*T_r, 0.008314462175)*u.kelvin # the temperature needed to achieve the reduced temperature T_r
 
@@ -321,6 +321,7 @@ if minimization == True:
     positions = simulation.context.getState(getPositions=True).getPositions()
     app.PDBFile.writeFile(pdb.topology, positions, open('%s_minimized.pdb'%pdb_prefix , 'w'))
 
+print('Simulating with T* =',T_r)
 print('Initiating MD simulation for %i steps'%numsteps)
 simulation.reporters.append(app.DCDReporter('%s.dcd'%dcd_prefix, coordinate_interval))
 if 'nc_prefix' in configdic.keys() and 'frcvel_interval' in configdic.keys():

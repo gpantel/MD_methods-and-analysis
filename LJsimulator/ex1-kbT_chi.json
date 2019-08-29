@@ -1,8 +1,8 @@
 {
-"pdb_prefix": "ex1",
-"dcd_prefix": "ex1",
-"nc_prefix": "ex1",
-"data_name": "ex1.dat",
+"pdb_prefix": "ex1-alt",
+"dcd_prefix": "ex1-alt",
+"nc_prefix": "ex1-alt",
+"data_name": "ex1-alt.dat",
 
 "initial_condition": "mixed",
 "N": 2000,
