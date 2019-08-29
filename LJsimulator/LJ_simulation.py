@@ -7,17 +7,17 @@ import numpy as np
 import os, sys
 import parmed as pmd
 import json
+from sys import platform
 
 # This JSON file loads up the user input parameters
 configdic = json.load(open(sys.argv[1]))
 # need to know the path to packmol
-path_to_packmol = '/home/gpantel/packmol-18.169/packmol'
+path_to_packmol = '/Users/gpantel/packmol-18.169/packmol'
 
 #################### This section is for user input. Users do not need to touch anything outside of this section
 ### Parameters that set file names
 pdb_prefix = configdic['pdb_prefix'] # prefix to initial coordinate PDB file, final coordinate PDB file
 dcd_prefix = configdic['dcd_prefix'] # name of the DCD file excluding the extension ".dcd"
-nc_prefix = configdic['nc_prefix'] # name of the NetCDF file excluding the extension ".nc"
 data_name  = configdic['data_name'] # name of the data file including the desired extension name (e.g. ".dat")
 
 ### Parameters that determine system size, density, ratios of particles (system composition)
@@ -33,13 +33,11 @@ dimensions = configdic['dimensions'] # 2 or 3 dimensions are acceptable.
 epsilonAR_r = np.array(configdic['epsilonAR_r'], dtype="float64")
 sigmas_r = configdic['sigmas_r'] # LJ sigmas in reduced units in order of particle type, nanometers in OpenMM
 masses_r = configdic['masses_r'] # masses in reduced units in order of particle type, amu in OpenMM
-T_r = 1.0 # temperature in reduced units T_r = kbT/epsilon
 
 ### Parameters that determine number of simulation steps and data writing intervals
 numsteps = configdic['numsteps'] # number of simulation steps to take in reduced unit time step
 data_interval = configdic['data_interval'] # interval in steps between which system thermodynamic data is written
 coordinate_interval = configdic['coordinate_interval'] # interval in steps between which system coordinates are written to a DCD-formatted trajectory
-frcvel_interval = configdic['frcvel_interval'] # interval in steps between which forces and velcities are written to a NetCDF file
 
 ### Parameters for the flat well restraint
 restraint_widthscale = configdic['restraint_widthscale']
@@ -51,11 +49,25 @@ platform_type = configdic['platform_type']
 minimization = configdic['minimization'] # Set this to "True" if you want to perform minimization
 initial_condition = configdic['initial_condition'] # mixed or stripe
 
-### Optional parameters -- restart files
+### Optional parameters
+# restart files
 if 'rstin_prefix' in configdic.keys():
     rstin_prefix = configdic['rstin_prefix']
 if 'rstout_prefix' in configdic.keys():
     rstout_prefix = configdic['rstout_prefix']
+# NetCDF files containing positions, forces, and velocities
+if 'nc_prefix' in configdic.keys() and 'frcvel_interval' in configdic.keys():
+    nc_prefix = configdic['nc_prefix'] # name of the NetCDF file excluding the extension ".nc"
+    frcvel_interval = configdic['frcvel_interval'] # interval in steps between which forces and velcities are written to a NetCDF file
+
+### Set the system temperature with two MUTUALLY EXCLUSIVE options...
+if 'T_r' in configdic.keys() and 'kbT_chi' not in configdic.keys():
+    T_r = configdic['T_r'] # temperature in reduced units T_r = kbT/epsilon
+elif 'kbT_chi' in configdic.keys() and 'T_r' not in configdic.keys():
+    kbT_chi = configdic['kbT_chi'] # specific type of reduced temperature for binary phase separations
+else:
+    print('You must define either T_r or kbT_chi in the input')
+kB = u.BOLTZMANN_CONSTANT_kB * u.AVOGADRO_CONSTANT_NA
 
 #################### Everything insensitive to user input used to set up simulations should be below here
 #os.system('export OPENMM_CPU_THREADS=%i'%numthreads)
@@ -78,6 +90,13 @@ timestep_r = np.sqrt(np.true_divide(np.sqrt(masses_r_avg)*np.square(sigmas_r_avg
 cutoff_r = 2.5*np.sum(sigmas_r*particle_ratios) # cutoff for LJ interactions in reduced units
 # equivalent gamma to using timestep=2 fs, gamma=1 ps^-1.
 gamma_r = 1000.0*0.5*timestep_r/u.picoseconds # timestep needs to be scaled up by 1000x fs^-1 scale as it is interpreted in ps^-1
+
+if 'T_r' in configdic.keys() and 'kbT_chi' not in configdic.keys():
+    T = np.true_divide(epsilons_r_avg*T_r, 0.008314462175)*u.kelvin # the temperature needed to achieve the reduced temperature T_r
+elif 'kbT_chi' in configdic.keys() and 'T_r' not in configdic.keys():
+    chi = -((epsilonAR_r[1][0] + epsilonAR_r[0][1])/2.) - ((epsilonAR_r[0][0] + epsilonAR_r[1][1])/2.) 
+    T_r = kbt_chi*np.true_divide(chi,kB)
+
 T = np.true_divide(epsilons_r_avg*T_r, 0.008314462175)*u.kelvin # the temperature needed to achieve the reduced temperature T_r
 
 # generate sigmaAR as an MxM matrix using Lorentz-Berthelot combination rule (arithmetic mean)
@@ -96,7 +115,7 @@ print('Constructing system using PACKMOL')
 if dimensions != 2 and dimensions != 3:
     print("dimensions may only be set to 2 or 3.")
     sys.exit()
-# these reduced usnits are interpreted as nm in OpenMM
+# these reduced units are interpreted as nm in OpenMM
 dimension_product_r_packmol = np.true_divide(N*(np.power(sigmas_r_avg_packmol,dimensions)),density_r) # system volume or area determined in reduced units
 box_edge_r = np.true_divide(np.power(dimension_product_r_packmol, np.true_divide(1.0,dimensions)),10) # box edge length in reduced units
 box_edge_r_packmol = box_edge_r*10*packingscale
@@ -104,7 +123,9 @@ box_edge_r_packmol = box_edge_r*10*packingscale
 packmol_file = open('packmol_input.inp', 'w')
 packmol_file.write('tolerance %f \n'%(sigmas_r_avg_packmol*packingscale))
 packmol_file.write('filetype pdb \n')
-packmol_file.write('add_box_sides = 1.0 \n')
+if platform != 'windows':
+    # PDB files will not have the box dimensions in windows. A little inconvenience.
+    packmol_file.write('add_box_sides = 1.0 \n')
 packmol_file.write('output %s \n'%('%s_initial.pdb'%pdb_prefix))
 
 first_x_edge = 0.0
@@ -144,11 +165,19 @@ os.system('%s < packmol_input.inp'%path_to_packmol)
 
 ### Clean up packmol files
 os.system('rm P*.pdb')
-#os.system('rm packmol_input.inp')
-os.system('sed -i "s/CRYST1/REMARK/g" %s_initial.pdb'%pdb_prefix) # temporarily change CRYST1 to a remark to avoid confusing app.PDBFile
+os.system('rm packmol_input.inp')
+# temporarily change CRYST1 to a remark to avoid confusing app.PDBFile
+if platform == "linux" or platform == "linux2":
+    os.system('sed -i "s/CRYST1/REMARK/g" %s_initial.pdb'%pdb_prefix)
+elif platform == "darwin":
+    os.system('sed -i "" "s/CRYST1/REMARK/g" %s_initial.pdb'%pdb_prefix)
 pdb = app.PDBFile('%s_initial.pdb'%pdb_prefix)
 positions = pdb.positions
-os.system('sed -i "6s/REMARK/CRYST1/g" %s_initial.pdb'%pdb_prefix) # change CRYST1 back from a remark
+# change CRYST1 back from a remark
+if platform == "linux" or platform == "linux2":
+    os.system('sed -i "6s/REMARK/CRYST1/g" %s_initial.pdb'%pdb_prefix)
+elif platform == "darwin":
+    os.system('sed -i "" "6s/REMARK/CRYST1/g" %s_initial.pdb'%pdb_prefix)
 
 ### Write a TCL script to wrap & visualize the system in VMD after simulation
 wrapper_file = open('%s.tcl'%pdb_prefix, 'w')
@@ -208,7 +237,6 @@ if enable_restraint == True:
 
 def CustomLangevinIntegrator(temperature=298.0*u.kelvin, collision_rate=91.0/u.picoseconds, timestep=1.0*u.femtoseconds):
     # Compute constants.
-    kB = u.BOLTZMANN_CONSTANT_kB * u.AVOGADRO_CONSTANT_NA
     kT = kB * temperature
     gamma = collision_rate
 
@@ -280,7 +308,7 @@ else:
 simulation.context.setPositions(positions)
 simulation.context.setVelocitiesToTemperature(T)
 
-# load restart if you want
+# load restart if asked
 if 'rstin_prefix' in configdic.keys():
     with open(rstin_prefix+'.rst', 'r') as f:
         simulation.context.setState(XmlSerializer.deserialize(f.read()))
@@ -295,7 +323,8 @@ if minimization == True:
 
 print('Initiating MD simulation for %i steps'%numsteps)
 simulation.reporters.append(app.DCDReporter('%s.dcd'%dcd_prefix, coordinate_interval))
-simulation.reporters.append(pmd.openmm.NetCDFReporter('%s.nc'%nc_prefix, frcvel_interval, crds=False, vels=True, frcs=True))
+if 'nc_prefix' in configdic.keys() and 'frcvel_interval' in configdic.keys():
+    simulation.reporters.append(pmd.openmm.NetCDFReporter('%s.nc'%nc_prefix, frcvel_interval, crds=True, vels=True, frcs=True))
 simulation.reporters.append(ReducedStateDataReporter(sys.stdout, data_interval, dimensions, step=True, 
     potentialEnergy=True, kineticEnergy=True, temperature=True, progress=True, remainingTime=True, 
     speed=True, totalSteps=numsteps, separator='\t'))

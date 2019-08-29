@@ -6,7 +6,7 @@
 
 "initial_condition": "mixed",
 "N": 2000,
-"T_r": 1,
+"kbT_chi": 2.3096,
 "density_r": 0.75,
 "dimensions": 2,
 "particle_ratios": [1, 1],
