@@ -12,7 +12,7 @@ from sys import platform
 # This JSON file loads up the user input parameters
 configdic = json.load(open(sys.argv[1]))
 # need to know the path to packmol
-path_to_packmol = '/Users/gpantel/packmol-18.169/packmol'
+path_to_packmol = '/home/gpantel/packmol-18.169/packmol'
 
 #################### This section is for user input. Users do not need to touch anything outside of this section
 ### Parameters that set file names
@@ -95,7 +95,7 @@ if 'T_r' in configdic.keys() and 'kbT_chi' not in configdic.keys():
     T = np.true_divide(epsilons_r_avg*T_r, 0.008314462175)*u.kelvin # the temperature needed to achieve the reduced temperature T_r
 elif 'kbT_chi' in configdic.keys() and 'T_r' not in configdic.keys():
     chi = -((epsilonAR_r[1][0] + epsilonAR_r[0][1])/2.) - ((epsilonAR_r[0][0] + epsilonAR_r[1][1])/2.) 
-    T_r = kbt_chi*np.true_divide(chi,kB)
+    T_r = kbT_chi*np.true_divide(chi,kB)
 
 T = np.true_divide(epsilons_r_avg*T_r, 0.008314462175)*u.kelvin # the temperature needed to achieve the reduced temperature T_r
 
