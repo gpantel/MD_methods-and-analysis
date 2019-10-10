@@ -92,12 +92,12 @@ cutoff_r = 2.5*np.sum(sigmas_r*particle_ratios) # cutoff for LJ interactions in 
 gamma_r = 1000.0*0.5*timestep_r/u.picoseconds # timestep needs to be scaled up by 1000x fs^-1 scale as it is interpreted in ps^-1
 
 if 'T_r' in configdic.keys() and 'kbT_chi' not in configdic.keys():
-    T = np.true_divide(epsilons_r_avg*T_r, 0.008314462175)*u.kelvin # the temperature needed to achieve the reduced temperature T_r
+    T = np.true_divide(epsilons_r_avg*T_r, kB)*u.kelvin # the temperature needed to achieve the reduced temperature T_r
 elif 'kbT_chi' in configdic.keys() and 'T_r' not in configdic.keys():
     chi = (-(epsilonAR_r[1][0] + epsilonAR_r[0][1])/2.) - (-(epsilonAR_r[0][0] + epsilonAR_r[1][1])/2.) 
     T_r = (kbT_chi*np.true_divide(chi,kB)).value_in_unit(u.kelvin*u.mole/u.joule)
 
-T = np.true_divide(epsilons_r_avg*T_r, 0.008314462175)*u.kelvin # the temperature needed to achieve the reduced temperature T_r
+T = np.true_divide(epsilons_r_avg*T_r, kB)*u.kelvin # the temperature needed to achieve the reduced temperature T_r
 
 # generate sigmaAR as an MxM matrix using Lorentz-Berthelot combination rule (arithmetic mean)
 sigmaAR_r = np.zeros((M,M), dtype="float64")
