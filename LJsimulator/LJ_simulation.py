@@ -12,7 +12,7 @@ from sys import platform
 # This JSON file loads up the user input parameters
 configdic = json.load(open(sys.argv[1]))
 # need to know the path to packmol
-path_to_packmol = '/Users/gpantel/packmol-18.169/packmol'
+path_to_packmol = '/home/gpantel/packmol-18.169/packmol'
 
 #################### This section is for user input. Users do not need to touch anything outside of this section
 ### Parameters that set file names
@@ -326,10 +326,10 @@ print('Initiating MD simulation for %i steps'%numsteps)
 simulation.reporters.append(app.DCDReporter('%s.dcd'%dcd_prefix, coordinate_interval))
 if 'nc_prefix' in configdic.keys() and 'frcvel_interval' in configdic.keys():
     simulation.reporters.append(pmd.openmm.NetCDFReporter('%s.nc'%nc_prefix, frcvel_interval, crds=True, vels=True, frcs=True))
-simulation.reporters.append(ReducedStateDataReporter(sys.stdout, data_interval, dimensions, step=True, 
+simulation.reporters.append(ReducedStateDataReporter(sys.stdout, data_interval, dimensions, T_r, step=True, 
     potentialEnergy=True, kineticEnergy=True, temperature=True, progress=True, remainingTime=True, 
     speed=True, totalSteps=numsteps, separator='\t'))
-simulation.reporters.append(ReducedStateDataReporter(data_name, data_interval, dimensions, step=True, 
+simulation.reporters.append(ReducedStateDataReporter(data_name, data_interval, dimensions, T_r, step=True, 
     potentialEnergy=True, kineticEnergy=True, temperature=True, progress=True, remainingTime=True, 
     speed=True, totalSteps=numsteps, separator='\t'))
 simulation.step(numsteps)

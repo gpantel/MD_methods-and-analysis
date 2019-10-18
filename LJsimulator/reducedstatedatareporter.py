@@ -58,7 +58,7 @@ class ReducedStateDataReporter(object):
     written in comma-separated-value (CSV) format, but you can specify a different separator to use.
     """
 
-    def __init__(self, file, reportInterval, dimensions, step=False, time=False, potentialEnergy=False, kineticEnergy=False, totalEnergy=False, temperature=False, 
+    def __init__(self, file, reportInterval, dimensions, T_r, step=False, time=False, potentialEnergy=False, kineticEnergy=False, totalEnergy=False, temperature=False, 
                  progress=False, remainingTime=False, speed=False, elapsedTime=False, separator=',', totalSteps=None):
         """Create a StateDataReporter.
 
@@ -70,6 +70,8 @@ class ReducedStateDataReporter(object):
             The interval (in time steps) at which to write frames
         dimensions : int
             The number of dimensions in the system
+        T_r : float
+            The reduced temperature
         step : bool=False
             Whether to write the current step index to the file
         time : bool=False
@@ -124,6 +126,7 @@ class ReducedStateDataReporter(object):
         self._step = step
         self._time = time
         self._dimensions = dimensions
+        self._T_r = T_r
         self._potentialEnergy = potentialEnergy
         self._kineticEnergy = kineticEnergy
         self._totalEnergy = totalEnergy
@@ -229,9 +232,9 @@ class ReducedStateDataReporter(object):
         if self._totalEnergy:
             values.append( (state.getKineticEnergy()+state.getPotentialEnergy()).value_in_unit(unit.kilojoules_per_mole) / system.getNumParticles() )
         if self._temperature and self._dimensions == 2:
-            values.append( (2*state.getKineticEnergy()/(self._dof*unit.MOLAR_GAS_CONSTANT_R)).value_in_unit(unit.kelvin) / (T*(2./3.)) )
+            values.append( ( (2*state.getKineticEnergy()/(self._dof*unit.MOLAR_GAS_CONSTANT_R)).value_in_unit(unit.kelvin) / (T*(2./3.)) )*self._T_r )
         if self._temperature and self._dimensions == 3:
-            values.append( (2*state.getKineticEnergy()/(self._dof*unit.MOLAR_GAS_CONSTANT_R)).value_in_unit(unit.kelvin) / T )
+            values.append( ( (2*state.getKineticEnergy()/(self._dof*unit.MOLAR_GAS_CONSTANT_R)).value_in_unit(unit.kelvin) / T )*self._T_r )
         if self._speed:
             elapsedHours = (clockTime-self._initialClockTime)/3600.0
             elapsedSteps = simulation.currentStep-self._initialSteps
