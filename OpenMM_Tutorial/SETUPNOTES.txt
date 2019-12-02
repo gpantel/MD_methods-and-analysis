@@ -1,0 +1,20 @@
+# First set up our environment to use CUDA 10.0
+export PATH=/usr/local/cuda-10.0/bin:/usr/local/cuda-10.0/NsightCompute-1.0${PATH:+:${PATH}}
+export LD_LIBRARY_PATH=/usr/local/cuda-10.0/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
+
+# Set up a conda environment for python3.7 (your own python environment)
+
+conda create -n py37 python=3.7
+conda activate py37
+
+# Install OpenMM with pre-compiled binaries for use with CUDA 10.0
+
+conda install -c omnia/label/cuda100 openmm
+
+# Test to make sure that OpenMM sees CUDA and has no errorrs
+
+python -m simtk.testInstallation
+
+# Also install openmmtools. We will use it for building a water box.
+
+conda install -c omnia openmmtools
