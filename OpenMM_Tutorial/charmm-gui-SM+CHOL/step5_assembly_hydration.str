@@ -1,0 +1,84 @@
+* Adjustment of hdyration level
+*
+
+prnlev 0
+
+calc nwater = ( @NLIPTOP + @NLIPBOT ) / 2.0 * @NHYDRAT
+calc nupper = @nwater * ( 1.0 + 0.01 )
+calc nlower = @nwater * ( 1.0 - 0.01 )
+calc zadjust = 0.0
+set pnh2o = 0
+
+label dotop
+
+open read card unit 10 name step4.2_waterbox.crd
+read sequence coor card unit 10
+generate W2 setup warn noangle nodihedral
+
+open read unit 10 card name step4.2_waterbox.crd
+read coor unit 10 card append
+
+coor stat sele segid W2 end
+calc zmove = @C / 2.0 
+calc zzw2 = -?zmax + @zcen + @zadjust
+
+coor trans zdir  @zzw2  sele segid W2 end
+coor trans zdir  @zmove sele segid W2 end
+
+delete atom sele .byres. ( ( segid W2 .and. type OH2 ) .and. -
+                           ( PTOT .around.  ) ) end
+delete atom sele .byres. ( ( segid W2 .and. type OH2 ) .and. -
+                           ( prop Z .lt. 15 ) .and. ( prop Z .gt. -15 ) ) end
+
+coor stat sele resname TIP3 .and. type OH2 .and. prop Z .gt. 0 end
+set nh2o = ?nsel
+
+if nh2o .ge. @nlower if nh2o .le. @nupper goto skiptop
+if nh2o .lt. @nlower calc zadjust = @zadjust + 0.01
+if nh2o .gt. @nupper calc zadjust = @zadjust - 0.1
+delete atom sele segid W2 end
+define PTOT sele .not. hydrogen end
+set pnh2o = @nh2o
+
+goto dotop 
+
+label skiptop
+define PTOT sele .not. hydrogen end
+set pnh2o = 0
+
+label dobot 
+
+open read card unit 10 name step4.2_waterbox.crd
+read sequence coor card unit 10
+generate W3 setup warn noangle nodihedral
+
+open read unit 10 card name step4.2_waterbox.crd
+read coor unit 10 card append
+
+coor stat sele segid W3 end
+calc zmove = @C / 2.0 
+calc zzw3 = -?zmin + @zcen - @zadjust
+
+coor trans zdir  @zzw3  sele segid W3 end
+coor trans zdir -@zmove sele segid W3 end
+
+delete atom sele .byres. ( ( segid W3 .and. type OH2 ) .and. -
+                           ( PTOT .around.  ) ) end
+delete atom sele .byres. ( ( segid W3 .and. type OH2 ) .and. -
+                           ( prop Z .lt. 15 ) .and. ( prop Z .gt. -15 ) ) end
+
+coor stat sele resname TIP3 .and. type OH2 .and. prop Z .lt. 0 end
+set nh2o = ?nsel
+
+if nh2o .ge. @nlower if nh2o .le. @nupper goto skipbot
+if nh2o .lt. @nlower calc zadjust = @zadjust + 0.01
+if nh2o .gt. @nupper calc zadjust = @zadjust - 0.1
+delete atom sele segid W3 end
+define PTOT sele .not. hydrogen end
+set pnh2o = @nh2o
+
+goto dobot
+
+label skipbot
+
+prnlev 5
