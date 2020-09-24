@@ -107,7 +107,7 @@ class DCDSubsetReporter(object):
 
         if self._dcd is None:
             self._dcd = DCDSubsetFile(
-                self._out, simulation.topology, simulation.integrator.getStepSize(),
+                self._out, simulation.topology, simulation.integrator.getStepSize(),self._indices_list,
                 simulation.currentStep, self._reportInterval, self._append
             )
         self._dcd.writeModel(nanometer*np.array([np.array(state.getPositions(asNumpy=True)[x]) for x in self._indices_list]), periodicBoxVectors=state.getPeriodicBoxVectors())
