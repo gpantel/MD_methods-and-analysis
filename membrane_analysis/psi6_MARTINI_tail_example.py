@@ -94,8 +94,8 @@ def get_side_coordinates_and_box(frame):
         lpd2i = lpd2_atoms[((num_lpd2)/2):]
     
     # assign lpd1 and lpd2 coordinates, completing the assignment of all coordinates from which psi6 will be computed
-    lpd1_coords = lpd1i.coordinates()
-    lpd2_coords = lpd2i.coordinates()
+    lpd1_coords = lpd1i.positions
+    lpd2_coords = lpd2i.positions
 
     lpd_coords = np.vstack((lpd1_coords,lpd2_coords,lpd3_coords))
     lpd_coords = lpd_coords.astype('float32')
