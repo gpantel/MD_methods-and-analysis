@@ -34,6 +34,15 @@ frames = np.arange(n_frames)[::skip]
 # set reference vector
 vref = np.array([[1,0,0],[0,0,0]])
 
+def wrap_positions(v, refv, box): # v and refv same number of entries
+    for i in range(len(v)):
+        vwrapped = np.copy(v)
+        if v[i] - refv[i] < 0:
+            if np.abs(v[i] - refv[i]) >= (box[i]/2): vwrapped += box[i]
+        if v[i] - refv[i] >= 0:
+            if np.abs(v[i] - refv[i]) >= (box[i]/2): vwrapped -= box[i]
+    return vwrapped
+
 def get_side_coordinates_and_box(frame):
     u = MDAnalysis.Universe(top,traj)
     u.trajectory[frame]
@@ -132,6 +141,8 @@ def angles_normvec_psi6(coords, atom, box):
     centered_coords = np.zeros((7,3))
     center_coord = coords[atom]
     for i in np.arange(7):
+        # center coords while respecting PBC...
+        coord = wrap_positions(coords[nn_inds[i]], coords[nn_inds[0]], box)
         centered_coords[i] = coords[nn_inds[i]] - center_coord
 
     C, N = standard_fit(centered_coords)
