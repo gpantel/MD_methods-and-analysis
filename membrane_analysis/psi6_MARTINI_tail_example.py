@@ -47,8 +47,8 @@ def get_side_coordinates_and_box(frame):
     u = MDAnalysis.Universe(top,traj)
     u.trajectory[frame]
 
-    x, y, z = u.trajectory.ts.triclinic_dimensions[0][0], u.trajectory.ts.triclinic_dimensions[1][1], u.trajectory.ts.triclinic_dimensions[2][2]
-    box = np.array([x, y, z])
+    #x, y, z = u.trajectory.ts.triclinic_dimensions[0][0], u.trajectory.ts.triclinic_dimensions[1][1], u.trajectory.ts.triclinic_dimensions[2][2]
+    #box = np.array([x, y, z])
 
     ### Determining side of the bilayer CHOL belongs to in this frame
     #Lipid Residue names
@@ -61,7 +61,7 @@ def get_side_coordinates_and_box(frame):
     lpd3_atoms = u.select_atoms('resname %s and name ROH'%lipid3)
     num_lpd1 = lpd1_atoms.n_atoms
     num_lpd2 = lpd2_atoms.n_atoms
-    # atoms in the upper leaflet as defined by insane.py or the CHARMM-GUI membrane builders
+    # atoms in the upper leaflet as defined by insane.py, the CHARMM-GUI membrane builders (last I checked), or MolPainter
     # select cholesterol headgroups within 1.5 nm of lipid headgroups in the selected leaflet
     # this must be done because CHOL rapidly flip-flops between leaflets in the MARTINI model
     # so we must assign CHOL to each leaflet at every time step, and in large systems
@@ -108,7 +108,7 @@ def get_side_coordinates_and_box(frame):
 
     lpd_coords = np.vstack((lpd1_coords,lpd2_coords,lpd3_coords))
     lpd_coords = lpd_coords.astype('float32')
-    return lpd_coords, box
+    return lpd_coords, u.atoms.dimensions #box
 
 def standard_fit(X):
     # Find the average of points (centroid) along the columns
