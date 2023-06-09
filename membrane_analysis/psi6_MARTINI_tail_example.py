@@ -20,16 +20,15 @@ import multiprocessing as mp
 from time import time
 
 # input
-nprocs = 16
-top  = 'confout.gro'
-traj = 'run.xtc'
+nprocs = 6
+top  = 'DPPC29-DUPC29-CHOL42.gro'
+traj = 'DPPC29-DUPC29-CHOL42.xtc'
 side = sys.argv[1] # "up" for upper leaflet "down" for lower leaflet
-skip = 10
+stride = 1
 
 u = MDAnalysis.Universe(top,traj)
 n_frames = u.trajectory.n_frames
-frames = np.arange(n_frames)[::skip]
-
+frames = np.arange(n_frames)[::stride]
 
 # set reference vector
 vref = np.array([[1,0,0],[0,0,0]])
@@ -50,65 +49,45 @@ def get_side_coordinates_and_box(frame):
     #x, y, z = u.trajectory.ts.triclinic_dimensions[0][0], u.trajectory.ts.triclinic_dimensions[1][1], u.trajectory.ts.triclinic_dimensions[2][2]
     #box = np.array([x, y, z])
 
-    ### Determining side of the bilayer CHOL belongs to in this frame
-    #Lipid Residue names
-    lipid1 ='DPPC'
-    lipid2 ='DIPC'
-    lipid3 ='CHOL'
-    
-    lpd1_atoms = u.select_atoms('resname %s and name PO4'%lipid1)
-    lpd2_atoms = u.select_atoms('resname %s and name PO4'%lipid2)
-    lpd3_atoms = u.select_atoms('resname %s and name ROH'%lipid3)
-    num_lpd1 = lpd1_atoms.n_atoms
-    num_lpd2 = lpd2_atoms.n_atoms
+    ### Determining side of the bilayer CHOL belongs to in this frame    
+    lipid_atoms = u.select_atoms('resname DPPC DIPC and name PO4')
+    chol_atoms = u.select_atoms('resname CHOL and name ROH')
     # atoms in the upper leaflet as defined by insane.py, the CHARMM-GUI membrane builders (last I checked), or MolPainter
     # select cholesterol headgroups within 1.5 nm of lipid headgroups in the selected leaflet
     # this must be done because CHOL rapidly flip-flops between leaflets in the MARTINI model
     # so we must assign CHOL to each leaflet at every time step, and in large systems
     # with substantial membrane undulations, a simple cut-off in the z-axis just will not cut it
     if side == 'up':
-        lpd1i = lpd1_atoms[:((num_lpd1)/2)]
-        lpd2i = lpd2_atoms[:((num_lpd2)/2)]
-        lipids = lpd1i + lpd2i
-        ns_lipids = NS.AtomNeighborSearch(lpd3_atoms)
-        lpd3i = ns_lipids.search(lipids,15.0)
+        lpdi = lipid_atoms[:int((lipid_atoms.n_atoms)/2)]
+        lipids = lpdi
+        ns_lipids = NS.AtomNeighborSearch(chol_atoms)
+        choli = ns_lipids.search(lipids,15.0)
     elif side == 'down':
-        lpd1i = lpd1_atoms[((num_lpd1)/2):]
-        lpd2i = lpd2_atoms[((num_lpd2)/2):]
-        lipids = lpd1i + lpd2i
-        ns_lipids = NS.AtomNeighborSearch(lpd3_atoms)
-        lpd3i = ns_lipids.search(lipids,15.0)
-    
+        lpdi = lipid_atoms[int((lipid_atoms.n_atoms)/2):]
+        lipids = lpdi
+        ns_lipids = NS.AtomNeighborSearch(chol_atoms)
+        choli = ns_lipids.search(lipids,15.0)
+
     # ID center of geometry coordinates for cholesterol on indicated bilayer side
-    lpd3_coords = np.zeros((len(lpd3i.resnums),3))
-    for i in np.arange(len(lpd3i.resnums)):
-        resnum = lpd3i.resnums[i]
-        group = u.select_atoms('resnum %i and (name R1 or name R2 or name R3 or name R4 or name R5)'%resnum)
+    chol_coords = np.zeros((len(choli.resnums),3))
+    for i in np.arange(len(choli.resnums)):
+        resnum = choli.resnums[i]
+        group = u.select_atoms('resnum %i and (name R1 R2 R3 R4 R5)'%resnum)
         group_cog = group.center_of_geometry()
-        lpd3_coords[i] = group_cog
+        chol_coords[i] = group_cog
     
     # ID coordinates for lipids on indicated bilayer side, renaming variables
-    lpd1_atoms = u.select_atoms('resname %s and (name C2A or name C2B)'%lipid1)
-    lpd2_atoms = u.select_atoms('resname %s and (name D2A or name D2B)'%lipid2)
-    num_lpd1 = lpd1_atoms.n_atoms
-    num_lpd2 = lpd2_atoms.n_atoms
+    lipid_atoms = u.select_atoms('(resname DPPC and (name C2A or name C2B)) or (resname DUPC and (name D2A or name D2B))')
     
     # select lipid tail atoms beloging to the selected bilayer side
     if side == 'up':
-        lpd1i = lpd1_atoms[:((num_lpd1)/2)]
-        lpd2i = lpd2_atoms[:((num_lpd2)/2)]
-    
+        lpdi = lipid_atoms[:int((lipid_atoms.n_atoms)/2)]
     elif side == 'down':
-        lpd1i = lpd1_atoms[((num_lpd1)/2):]
-        lpd2i = lpd2_atoms[((num_lpd2)/2):]
-    
-    # assign lpd1 and lpd2 coordinates, completing the assignment of all coordinates from which psi6 will be computed
-    lpd1_coords = lpd1i.positions
-    lpd2_coords = lpd2i.positions
-
-    lpd_coords = np.vstack((lpd1_coords,lpd2_coords,lpd3_coords))
-    lpd_coords = lpd_coords.astype('float32')
-    return lpd_coords, u.atoms.dimensions #box
+        lpdi = lipid_atoms[int((lipid_atoms.n_atoms)/2):]
+    lipid_coords = lpdi.positions
+    all_coords = np.vstack((lipid_coords,chol_coords))
+    all_coords = all_coords.astype('float32')
+    return all_coords, u.atoms.dimensions #box
 
 def standard_fit(X):
     # Find the average of points (centroid) along the columns
@@ -173,7 +152,7 @@ def angles_normvec_psi6(coords, atom, box):
 
 def get_psi6(frame):
     start = time()
-    print('Finding psi6, normvec in frame %i of %i'%(frame, n_frames))
+    print('Finding psi6, normvec in frame %i of %i'%(frame+1, n_frames))
     coords, box = get_side_coordinates_and_box(frame)
     n_atoms = coords.shape[0]
     psi6s = np.zeros(n_atoms,dtype=complex)
@@ -183,21 +162,24 @@ def get_psi6(frame):
     print('Finished after', time() - start, 'seconds')
     return psi6s, angles
 
-pool = mp.Pool(processes=nprocs)
-print 'Initiating multiprocessing with %i processors'%nprocs
-results = pool.map(get_psi6, frames)
+if __name__ == "__main__":   
 
-atom_angles = []
-atom_psi6s  = []
-for i in range(len(results)):
-    atom_psi6s.append(results[i][0])
-    atom_angles.append(results[i][1])
+    pool = mp.Pool(processes=nprocs)
+    print('Initiating multiprocessing with %i processors'%nprocs)
+    results = pool.map(get_psi6, frames)
 
-# write out the complex vector computed for psi6 and also
-# write out both the angles to each neighbor of each particle
-if side == 'up':
-    np.save('psi6s_upper_tail.npy', atom_psi6s)
-    np.save('angles_upper_tail.npy', atom_angles)
-elif side == 'down':
-    np.save('psi6s_lower_tail.npy', atom_psi6s)
-    np.save('angles_lower_tail.npy', atom_angles)
+    atom_angles = []
+    atom_psi6s  = []
+    for i in range(len(results)):
+        atom_psi6s.append(results[i][0])
+        atom_angles.append(results[i][1])
+
+    # write out the complex vector computed for psi6 and also
+    # write out both the angles to each neighbor of each particle
+    # this is a list-of-lists, as the number of cholesterol in upper and lower leaflets can change due to flipping
+    if side == 'up':
+        np.save('psi6s_upper_tail.npy', atom_psi6s, allow_pickle=True)
+        np.save('angles_upper_tail.npy', atom_angles, allow_pickle=True)
+    elif side == 'down':
+        np.save('psi6s_lower_tail.npy', atom_psi6s, allow_pickle=True)
+        np.save('angles_lower_tail.npy', atom_angles, allow_pickle=True)
