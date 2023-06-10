@@ -21,8 +21,8 @@ from time import time
 
 # input
 nprocs = 6
-top  = 'DPPC29-DUPC29-CHOL42.gro'
-traj = 'DPPC29-DUPC29-CHOL42.xtc'
+top  = 'DPPC29-DIPC29-CHOL42.gro'
+traj = 'DPPC29-DIPC29-CHOL42.xtc'
 side = sys.argv[1] # "up" for upper leaflet "down" for lower leaflet
 stride = 1
 
@@ -77,7 +77,7 @@ def get_side_coordinates_and_box(frame):
         chol_coords[i] = group_cog
     
     # ID coordinates for lipids on indicated bilayer side, renaming variables
-    lipid_atoms = u.select_atoms('(resname DPPC and (name C2A or name C2B)) or (resname DUPC and (name D2A or name D2B))')
+    lipid_atoms = u.select_atoms('(resname DPPC and (name C2A or name C2B)) or (resname DIPC and (name D2A or name D2B))')
     
     # select lipid tail atoms beloging to the selected bilayer side
     if side == 'up':
@@ -177,6 +177,11 @@ if __name__ == "__main__":
     # write out the complex vector computed for psi6 and also
     # write out both the angles to each neighbor of each particle
     # this is a list-of-lists, as the number of cholesterol in upper and lower leaflets can change due to flipping
+    # In "psi6s_upper/lower_tail.npy" you will have the Ψ_6 data for each lipid tail and cholesterol (indexed by k in the equation)
+    # in the upper/lower lipid leaflet. This is a complex value which describes the local orientation of the 6 nearest-neighbor 
+    # lipid tails or cholesterol around the lipid k. The absolute value |Ψ_6^k| describes how close the 6 nearest-neighbors around 
+    # lipid or cholesterol k are oriented to a hexagon. "angles_upper_tail.npy" contains the angles (in radians) measured for 
+    # each of the 6 nearest-neighbor lipid tails around each lipid or cholesterol k, which are used in measuring Ψ_6^k.
     if side == 'up':
         np.save('psi6s_upper_tail.npy', atom_psi6s, allow_pickle=True)
         np.save('angles_upper_tail.npy', atom_angles, allow_pickle=True)
